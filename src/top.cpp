@@ -6,7 +6,7 @@
 #include <sys/time.h>
 #include "top.h"
 #include "yolov5.h"
-#include "serial.h"
+
 #include "jetsonEncoder.h"
 #include <runtracker.h>
 #include <opencv2/video/tracking.hpp>
@@ -39,6 +39,41 @@ signal_handle(int signum)
     printf("Quit due to exit command from user!\n");
     quit = true;
     // close(client_sock);
+}
+
+void genVisCamCmdData(int focal)
+{
+  if(focal == 1){
+    buffSenData_cam[4] = 0x00;  
+    buffSenData_cam[5] = 0x00;  
+    buffSenData_cam[6] = 0x00;  
+    buffSenData_cam[7] = 0x00;
+  }
+  else if(focal == 2){
+    std::cout << "in" << std::endl;
+    buffSenData_cam[4] = 0x01;  
+    buffSenData_cam[5] = 0x06;  
+    buffSenData_cam[6] = 0x08;  
+    buffSenData_cam[7] = 0x00;
+  }
+  else if(focal == 3){
+    buffSenData_cam[4] = 0x02;  
+    buffSenData_cam[5] = 0x00;  
+    buffSenData_cam[6] = 0x04;  
+    buffSenData_cam[7] = 0x00;
+  }
+  else if(focal == 4){
+    buffSenData_cam[4] = 0x02;  
+    buffSenData_cam[5] = 0x06;  
+    buffSenData_cam[6] = 0x04;  
+    buffSenData_cam[7] = 0x00;
+  }
+  else if(focal == 5){
+    buffSenData_cam[4] = 0x02;  
+    buffSenData_cam[5] = 0x0A;  
+    buffSenData_cam[6] = 0x00;  
+    buffSenData_cam[7] = 0x00;
+  }
 }
 
 long getCurrentTime(){
@@ -251,6 +286,8 @@ void Top::decode_tcp_data(){
   // focal
   focal_rec = int(rec_param[4]);
   std::cout << focal_rec << std::endl;
+  genVisCamCmdData(focal_rec);
+  serial_viscam.serial_send(buffSenData_cam, 9);
 
   // init rect
   init_rect[0] = int(rec_param[10] << 8) + int(rec_param[11]);
@@ -448,11 +485,23 @@ int Top::run(){
   nvrenderCfg rendercfg{1920, 1080, 960, 540, 0, 0, 0}; 
   nvrender *renderer = new nvrender(rendercfg);
 
-  cv::Mat img, ret;
+  cv::Mat imgRTSP, visOri, irOri, ret;
+  cv::Mat imgRTSP = cv::Mat(720, 1280, CV_8UC3);
+  imgRTSP.setTo(0);
 
   auto tt = cv::imread("/home/nxsd/1.jpg");
 
   bool trackerInit = false;
+
+  //init serial
+  serial_viscam.set_serial(0);
+
+  // set focal serial command
+  buffSenData_cam[0] = 0x81;  
+  buffSenData_cam[1] = 0x01;  
+  buffSenData_cam[2] = 0x04;  
+  buffSenData_cam[3] = 0x47;  
+  buffSenData_cam[8] = 0xFF;
 
   while(!quit)
   {
@@ -468,20 +517,21 @@ int Top::run(){
     // }
     if(m_enDispMode == EN_DISPLAY_MODE_VIS)
     {
-      visCam->getFrame(img);
-
+      visCam->getFrame(visOri);
+      imgRTSP = visOri;
       // visCam->start_capture();
       // img = visCam->m_ret;
     }
     else if(m_enDispMode == EN_DISPLAY_MODE_IR)
     {
-      thermalCam->getFrame(img);
+      thermalCam->getFrame(irOri);
+      irOri.copyTo(imgRTSP(cv::Rect(320,104,640,512)));
     }
     else
     {
       cv::Mat visImg, thermalImg;
-      visCam->getFrame(visImg);
-      // thermalCam->getFrame(thermalImg);
+      visCam->getFrame(visOri);
+      thermalCam->getFrame(irOri);
       //do fusion
     }
 
@@ -499,20 +549,20 @@ int Top::run(){
 
     if(m_enCtrlMode == EN_CTRL_MODE_DET)
     {
-      img = nvProcessor.ProcessOnce(img);
+      imgRTSP = nvProcessor.ProcessOnce(imgRTSP);
     }
     else if(m_enCtrlMode == EN_CTRL_MODE_AUTOTRACK)
     {
       auto start = std::chrono::system_clock::now();
       if(trackerInit == false){
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, img, trackerInit, init_rect[0],init_rect[1]
+        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
         trackerInit = true;
       }
       else{
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, img, trackerInit, init_rect[0],init_rect[1]
+        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
       }
 
@@ -522,8 +572,10 @@ int Top::run(){
       auto end = std::chrono::system_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
               << "ms" << std::endl;
-
-
+    }
+    else if(m_enCtrlMode == EN_CTRL_MODE_MANUALTRACK)
+    {
+      
     }
 
     //draw cross, move to render
@@ -531,8 +583,8 @@ int Top::run(){
     // cv::line(img, cv::Point(640, 320), cv::Point(640, 400), cv::Scalar(0,255,255), 3);
 
 
-    RTSP->process(img);
-    renderer->render(img);
+    RTSP->process(imgRTSP);
+    renderer->render(imgRTSP);
     // cv::imshow("1",ret);
     // cv::waitKey(30);
 
@@ -966,6 +1018,8 @@ int Top::data_transfer(){
 
   return 0;
 }
+
+
 
 int Top::serial_transfer(){
   // set focal serial command

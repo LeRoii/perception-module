@@ -19,6 +19,8 @@
 #include<arpa/inet.h>
 #include<netinet/in.h>
 
+#include "serial.h"
+
 #include "camera_v4l2_cuda.h"
 
 #ifdef WIN32
@@ -83,6 +85,8 @@ public:
     void yolotest();
 
 public:
+
+  Serial serial_viscam;
     
 private:
     cv::Mat fusion(cv::Mat &vis, cv::Mat &ir, float gamma);

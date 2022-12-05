@@ -761,7 +761,7 @@ bool v4l2::start_capture()
                 // cv::flip(tmp, m_ret, 0);
 
                 m_ret = thermalfinal;
-                cv::resize(m_ret, m_ret, cv::Size(1280,720));
+                // cv::resize(m_ret, m_ret, cv::Size(1280,720));
                 // std::cout << m_ret.rows << " " << m_ret.cols << std::endl;
 
                 // if(buffer_thermel.size())
