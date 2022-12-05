@@ -41,7 +41,7 @@ signal_handle(int signum)
     // close(client_sock);
 }
 
-void genVisCamCmdData(int focal)
+static void genVisCamCmdData(int focal)
 {
   if(focal == 1){
     buffSenData_cam[4] = 0x00;  
@@ -76,6 +76,13 @@ void genVisCamCmdData(int focal)
   }
 }
 
+static void updateTrackingInitBox(flaot sz)
+{
+  init_rect[0] = 640 - sz/2;
+  init_rect[1] = 360 - sz/2;
+  init_rect[2] = init_rect[3] = sz;
+}
+
 long getCurrentTime(){
   struct timeval tv;
   gettimeofday(&tv, NULL);
@@ -104,6 +111,7 @@ void load_homo(std::string txt_path, std::vector<cv::Mat> &homo_buffer){
 
     myfile.close();
 }
+
 
 
 Top::Top(){
@@ -302,21 +310,50 @@ void Top::decode_tcp_data(){
 
 
   // mode_fun
-  int is_detection = int(rec_param[5]);
-  int is_track = int(rec_param[6]);
-  if(is_detection == 1)
-    // mode_fun = 2;
-    m_enCtrlMode = EN_CTRL_MODE_DET;
+  int ctrlMode = int(rec_param[5]);
+  int templateSize = int(rec_param[6]);
+  // if(is_detection == 1)
+  //   // mode_fun = 2;
+  //   m_enCtrlMode = EN_CTRL_MODE_DET;
   
-  else if(is_track == 1){
-    // mode_fun = 3;
-    // is_initialised = 0;
-    m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
+  // else if(is_track == 1){
+  //   // mode_fun = 3;
+  //   // is_initialised = 0;
+  //   m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
+  // }
+  // else
+  //   m_enCtrlMode = EN_CTRL_MODE_OB;
+  // // if(is_detection == 0 && is_track == 0)
+  // //   mode_fun = 1;
+  
+  switch (ctrlMode)
+  {
+    case 1:
+      m_enCtrlMode = EN_CTRL_MODE_DET;
+      break;
+    case 2:
+      m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
+      break;
+    case 3:
+      m_enCtrlMode = EN_CTRL_MODE_MANUALTRACK;
+      break;
+    default:
+      m_enCtrlMode = EN_CTRL_MODE_OB;
+      break;
+  }
+
+  if(templateSize == 0)
+  {
+    updateTrackingInitBox(AUTO_TRACK_SIZE_L);
+  }
+  else if(templateSize == 1)
+  {
+    updateTrackingInitBox(AUTO_TRACK_SIZE_M);
   }
   else
-    m_enCtrlMode = EN_CTRL_MODE_OB;
-  // if(is_detection == 0 && is_track == 0)
-  //   mode_fun = 1;
+  {
+    updateTrackingInitBox(AUTO_TRACK_SIZE_S);
+  }
 
   // lazer
   is_detec_distane = int(rec_param[7]);
@@ -575,7 +612,7 @@ int Top::run(){
     }
     else if(m_enCtrlMode == EN_CTRL_MODE_MANUALTRACK)
     {
-      
+
     }
 
     //draw cross, move to render
