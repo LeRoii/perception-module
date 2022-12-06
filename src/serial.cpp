@@ -23,9 +23,9 @@ int Serial::openPort(int fd, int comport){
             printf("open ttyTHS1 .....\n");  
         }  
     }  
-    else if (comport == 2)  
+    else if (comport == 0)  
     {  
-        fd = open("/dev/ttyS2", O_RDWR | O_NOCTTY | O_NDELAY);  
+        fd = open("/dev/ttyTHS0", O_RDWR | O_NOCTTY | O_NDELAY);  
         if (-1 == fd)  
         {  
             perror("Can't Open Serial Port");  

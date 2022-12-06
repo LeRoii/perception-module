@@ -138,7 +138,7 @@ void nvrender::fit2final(cv::Mat &input, cv::Mat &output)
         fitsizeok = true;
     }
     cv::resize(input, tmp, cv::Size(), fitscale, fitscale);
-    printf("render----offsetX:%d, offsetY:%d, w:%d, h:%d\n",offsetX, offsetY, w, h);
+    // printf("render----offsetX:%d, offsetY:%d, w:%d, h:%d\n",offsetX, offsetY, w, h);
     tmp.copyTo(output(cv::Rect(offsetX, offsetY, w, h)));
 }
 

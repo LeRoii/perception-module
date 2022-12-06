@@ -878,7 +878,7 @@ void v4l2::run()
     while(1)
     {
         // usleep(10);
-        printf("start run\n");
+        // printf("start run\n");
         if(!start_capture())
         {
             printf("run fct read frame fail");
@@ -886,10 +886,10 @@ void v4l2::run()
             continue;
         }
         std::unique_lock<std::mutex> lock(m_mtx[m_id]);
-        printf("[%d]queue size\n", m_queue.size());
+        // printf("[%d]queue size\n", m_queue.size());
         while(m_queue.size() >= 2)
         {
-            printf("[%d] wait for consumer\n", m_id);
+            // printf("[%d] wait for consumer\n", m_id);
             // spdlog::trace("cam:[{}] wait for consumer", m_id);
             // m_queue.pop_front();
             con[m_id].wait(lock);
@@ -909,7 +909,7 @@ int v4l2::getFrame(cv::Mat &mat, bool src)
     while(m_queue.empty())
     {
         
-        printf("[%d] wait for img\n", m_id);
+        // printf("[%d] wait for img\n", m_id);
         // spdlog::trace("cam:[{}] wait for img", m_id);
         // return 0;
         con[m_id].wait(lock);

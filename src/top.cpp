@@ -28,7 +28,12 @@ std::mutex mtx_clear_showbuffer;
 
 std::mutex mtx_tcp;
 
+  unsigned char* buffSenData_cam;
+  unsigned char* buffRcvData_cam;
+  unsigned char* buffSenData_razer;
+  unsigned char* buffRcvData_razer;
 
+  float* init_rect;
 
 int client_sock;
 bool quit = false;
@@ -76,7 +81,7 @@ static void genVisCamCmdData(int focal)
   }
 }
 
-static void updateTrackingInitBox(flaot sz)
+static void updateTrackingInitBox(float sz)
 {
   init_rect[0] = 640 - sz/2;
   init_rect[1] = 360 - sz/2;
@@ -457,6 +462,13 @@ void Top::find_asyn(std::vector<cv::Mat> &buffer_v, std::vector<cv::Mat> &buffer
 int Top::run(){
 
   signal(SIGINT, signal_handle);
+
+  // serial_viscam.set_serial(0);
+
+  // while(1)
+  // {
+
+  // }
   // struct sigaction sig_action;
   // sig_action.sa_handler = signal_handle;
   //   sigemptyset(&sig_action.sa_mask);
@@ -523,8 +535,8 @@ int Top::run(){
   nvrender *renderer = new nvrender(rendercfg);
 
   cv::Mat imgRTSP, visOri, irOri, ret;
-  cv::Mat imgRTSP = cv::Mat(720, 1280, CV_8UC3);
-  imgRTSP.setTo(0);
+  imgRTSP = cv::Mat(720, 1280, CV_8UC3);
+  
 
   auto tt = cv::imread("/home/nxsd/1.jpg");
 
@@ -562,6 +574,7 @@ int Top::run(){
     else if(m_enDispMode == EN_DISPLAY_MODE_IR)
     {
       thermalCam->getFrame(irOri);
+      imgRTSP.setTo(0);
       irOri.copyTo(imgRTSP(cv::Rect(320,104,640,512)));
     }
     else

@@ -114,7 +114,7 @@ private:
   // tracking
   int start_tracking;
   int is_initialised;
-  float* init_rect;
+  
   std::vector<cv::Rect> bbox_id;
   int track_id;
 
@@ -136,10 +136,7 @@ private:
   int is_focal;
   int focal_rec;
   int is_detec_distane;
-  unsigned char* buffSenData_cam;
-  unsigned char* buffRcvData_cam;
-  unsigned char* buffSenData_razer;
-  unsigned char* buffRcvData_razer;
+
 
   // mode type
   // mode_frame = 1, 2, 3  vis/ir/fusion
