@@ -81,6 +81,21 @@ static void genVisCamCmdData(int focal)
   }
 }
 
+static void genRazerCamCmdData(int focal)
+{
+  if(focal == 0){
+    buffSenData_razer[2]=0x02;
+    buffSenData_razer[4]=0x01;
+    buffSenData_razer[5]=0x04;
+    }
+    if(focal == 1){
+    is_detec_distane=focal;
+    buffSenData_razer[2]=0x02;
+    buffSenData_razer[4]=0x04;
+    buffSenData_razer[5]=0x07;
+    }
+}
+
 static void updateTrackingInitBox(float sz)
 {
   init_rect[0] = 640 - sz/2;
@@ -302,6 +317,13 @@ void Top::decode_tcp_data(){
   genVisCamCmdData(focal_rec);
   serial_viscam.serial_send(buffSenData_cam, 9);
 
+  //focal razer
+  focal_razer_rec = int(rec_param[7]);
+  std::cout << focal_razer_rec << std::endl;
+  genRazerCamCmdData(focal_razer_rec);
+  serial_razer.serial_send(buffSenData_razer, 6);
+
+
   // init rect
   init_rect[0] = int(rec_param[10] << 8) + int(rec_param[11]);
   init_rect[1] = int(rec_param[12] << 8) + int(rec_param[13]);
@@ -360,8 +382,8 @@ void Top::decode_tcp_data(){
     updateTrackingInitBox(AUTO_TRACK_SIZE_S);
   }
 
-  // lazer
-  is_detec_distane = int(rec_param[7]);
+  // // lazer
+  // is_detec_distane = int(rec_param[7]);
 
   // no_use
   int no_use = int(rec_param[8]);
@@ -459,6 +481,14 @@ void Top::find_asyn(std::vector<cv::Mat> &buffer_v, std::vector<cv::Mat> &buffer
     //std::cout << vis.size() << " " << thermel.size() << std::endl;
 }
 
+//--------------------------razer---------------------------------------
+void Top::init_buffSenData_razer(){
+  buffSenData_razer[0] = 0xEE;  
+  buffSenData_razer[1] = 0x16;  
+  buffSenData_razer[3] = 0x03;
+}
+//----------------------------------------------------------------------
+
 int Top::run(){
 
   signal(SIGINT, signal_handle);
@@ -506,7 +536,9 @@ int Top::run(){
   // std::thread rec_serial(&Top::tcp_rec, this);
   // Serial_trans.detach();
   // send_serial.detach();
-  // rec_serial.detach(); 
+  // rec_serial.detach();
+  thread razer_serial_recTh(&Top::razer_serial_rec, this);
+  razer_serial_recTh.detach();
 
   std::string net = "/home/nxsd/yolo/yolov5/yolo4_berkeley_fp16.rt";
   imageProcessor nvProcessor(net);
@@ -544,6 +576,7 @@ int Top::run(){
 
   //init serial
   serial_viscam.set_serial(0);
+  serial_razer.set_serial(1);
 
   // set focal serial command
   buffSenData_cam[0] = 0x81;  
@@ -551,6 +584,9 @@ int Top::run(){
   buffSenData_cam[2] = 0x04;  
   buffSenData_cam[3] = 0x47;  
   buffSenData_cam[8] = 0xFF;
+
+  //set razer serial command
+  init_buffSenData_razer();
 
   while(!quit)
   {
@@ -1067,6 +1103,18 @@ int Top::data_transfer(){
   close(sock);
 
   return 0;
+}
+
+
+int Top::razer_serial_rec(){
+      
+    if(is_detec_distane == 1){
+      // serial_razer.serial_send(buffSenData_razer, 5);
+      serial_razer.serial_recieve(buffRcvData_razer);
+    }
+    // std::cout <<  int(buffRcvData[0]) << " " <<  int(buffRcvData[1]) << " "  <<  int(buffRcvData[2]) << " " <<  int(buffRcvData[3]) << " " 
+    //           <<  int(buffRcvData[4]) << " " <<  int(buffRcvData[5]) << " " <<  int(buffRcvData[6]) << std::endl;
+  }
 }
 
 

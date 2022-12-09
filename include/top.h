@@ -76,6 +76,7 @@ public:
     int tracking();
     int data_transfer();
     int serial_transfer();
+    void razer_serial_rec();
     void set_focal(int f);
 
     // test using function
@@ -87,6 +88,7 @@ public:
 public:
 
   Serial serial_viscam;
+  Serial serial_razer;
     
 private:
     cv::Mat fusion(cv::Mat &vis, cv::Mat &ir, float gamma);
@@ -96,6 +98,7 @@ private:
     void decode_tcp_data();
     void tcp_send();
     void tcp_rec();
+    void init_buffSenData_razer();
 
 private:
   // test visible capture
@@ -135,6 +138,7 @@ private:
   // serial
   int is_focal;
   int focal_rec;
+  int focal_razer_rec;
   int is_detec_distane;
 
 

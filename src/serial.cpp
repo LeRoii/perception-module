@@ -202,13 +202,23 @@ int Serial::set_serial(int port){
     {  
         perror("open_port error");  
         return -1;  
-    }  
+    }
 
-    if ((iSetOpt = setOpt(fdSerial, 9600, 8, 'N', 1))<0)  
-    {  
-        perror("set_opt error");  
-        return -1;  
-    }  
+    if (port){
+            if ((iSetOpt = setOpt(fdSerial, 115200, 8, 'N', 1))<0)  
+        {  
+            perror("set_opt error");  
+            return -1;  
+        }  
+    }
+    else{
+            if ((iSetOpt = setOpt(fdSerial, 9600, 8, 'N', 1))<0)  
+        {  
+            perror("set_opt error");  
+            return -1;  
+        }  
+    }
+   
     printf("Serial fdSerial=%d\n", fdSerial);  
   
     tcflush(fdSerial, TCIOFLUSH);//清掉串口缓存  
