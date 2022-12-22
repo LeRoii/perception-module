@@ -360,9 +360,11 @@ void Top::decode_tcp_data(){
       break;
     case 2:
       m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
+      trackerInit = false;
       break;
     case 3:
       m_enCtrlMode = EN_CTRL_MODE_MANUALTRACK;
+      trackerInit = false;
       break;
     default:
       m_enCtrlMode = EN_CTRL_MODE_OB;
@@ -661,6 +663,17 @@ int Top::run(){
     }
     else if(m_enCtrlMode == EN_CTRL_MODE_MANUALTRACK)
     {
+      if(trackerInit == false){
+        // siamtracking(tracker, img, trackerInit, init_rect, tb);
+        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+      ,init_rect[2],init_rect[3]);
+        trackerInit = true;
+      }
+      else{
+        // siamtracking(tracker, img, trackerInit, init_rect, tb);
+        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+      ,init_rect[2],init_rect[3]);
+      }
 
     }
 
