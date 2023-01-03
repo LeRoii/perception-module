@@ -32,6 +32,8 @@ std::mutex mtx_tcp;
   unsigned char* buffRcvData_cam;
   unsigned char* buffSenData_razer;
   unsigned char* buffRcvData_razer;
+  unsigned char* buffSenData_servo;
+  unsigned char* buffRcvData_servo;
 
   float* init_rect;
 
@@ -40,6 +42,7 @@ bool quit = false;
 
 bool trackerInit = false;
 
+stServoData gServoData;
 
 static void
 signal_handle(int signum)
@@ -47,6 +50,21 @@ signal_handle(int signum)
     printf("Quit due to exit command from user!\n");
     quit = true;
     // close(client_sock);
+}
+
+static void genServoData(stServoData data)
+{
+  
+  buffSenData_servo[0] = 0xEB;
+  buffSenData_servo[1] = 0x90;
+
+  if(data.mode == EN_CTRL_MODE_OB || data.mode == EN_CTRL_MODE_DET)
+    buffSenData_servo[2] = 0x02;
+  else if(data.mode == EN_CTRL_MODE_AUTOTRACK || data.mode == EN_CTRL_MODE_MANUALTRACK)
+    buffSenData_servo[2] = 0x01;
+
+  //To do 根据data值 填 buffSenData_servo
+  
 }
 
 static void genVisCamCmdData(int focal)
@@ -218,11 +236,15 @@ Top::Top(){
     is_focal = 0;
     focal_rec = 1;
     is_detec_distane = 0;
+
     buffSenData_cam = new unsigned char [1024];
     buffRcvData_cam = new unsigned char [1024];
     buffSenData_razer = new unsigned char [1024];
     buffRcvData_razer = new unsigned char [1024];
+    buffSenData_servo = new unsigned char [20];
+    buffRcvData_servo = new unsigned char [20];
 
+    // mode
     // mode
     mode_frame = 1;
     mode_fun = 1;
@@ -360,17 +382,25 @@ void Top::decode_tcp_data(){
   {
     case 1:
       m_enCtrlMode = EN_CTRL_MODE_DET;
+      //To do 设置伺服定位模式
+      // serial_servo.serial_send()
       break;
     case 2:
       m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
       trackerInit = false;
+      //To do 设置伺服跟踪模式
+      // serial_servo.serial_send()
       break;
     case 3:
       m_enCtrlMode = EN_CTRL_MODE_MANUALTRACK;
       trackerInit = false;
+      //To do 设置伺服跟踪模式
+      // serial_servo.serial_send()
       break;
     default:
       m_enCtrlMode = EN_CTRL_MODE_OB;
+      //To do 设置伺服定位模式
+      // serial_servo.serial_send()
       break;
   }
 
@@ -579,6 +609,7 @@ int Top::run(){
   //init serial
   serial_viscam.set_serial(0);
   // serial_razer.set_serial(1);
+  serial_servo.set_serial(2);
 
   // thread razer_serial_recTh(&Top::razer_serial_rec, this);
   // razer_serial_recTh.detach();
@@ -658,6 +689,10 @@ int Top::run(){
         kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
       }
+
+      //To do 计算脱靶量
+
+      //To do 向伺服发命令
 
       printf("init rect:%f,%f,%f,%f\n",init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);

@@ -36,6 +36,19 @@ int Serial::openPort(int fd, int comport){
             printf("open ttyS2 .....\n");  
         }  
     } 
+    else if (comport == 2)  
+    {  
+        fd = open("/dev/ttyUSB0", O_RDWR | O_NOCTTY | O_NDELAY);  
+        if (-1 == fd)  
+        {  
+            perror("Can't Open Serial Port");  
+            return(-1);  
+        }  
+        else  
+        {  
+            printf("open ttyS2 .....\n");  
+        }  
+    } 
   
     if (fcntl(fd, F_SETFL, 0)<0)  
     {  
@@ -204,14 +217,15 @@ int Serial::set_serial(int port){
         return -1;  
     }
 
-    if (port){
+    if (port == 1 || port == 2){
             if ((iSetOpt = setOpt(fdSerial, 115200, 8, 'N', 1))<0)  
         {  
             perror("set_opt error");  
             return -1;  
         }  
     }
-    else{
+    else if (port == 0)  
+    {
             if ((iSetOpt = setOpt(fdSerial, 9600, 8, 'N', 1))<0)  
         {  
             perror("set_opt error");  

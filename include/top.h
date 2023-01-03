@@ -47,6 +47,15 @@ enum enCtrlMode
   EN_CTRL_MODE_MANUALTRACK = 4
 };
 
+struct stServoData
+{
+  enCtrlMode mode,
+  float yaw,  //航向角
+  float pitch,  //俯仰角
+  int offsetX,  //脱靶量x
+  int offsetY //脱靶量y
+};
+
 const float AUTO_TRACK_SIZE_L = 128;
 const float AUTO_TRACK_SIZE_M = 64;
 const float AUTO_TRACK_SIZE_S = 32;
@@ -89,6 +98,7 @@ public:
 
   Serial serial_viscam;
   Serial serial_razer;
+  Serial serial_servo;
     
 private:
     cv::Mat fusion(cv::Mat &vis, cv::Mat &ir, float gamma);
