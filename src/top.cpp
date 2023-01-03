@@ -38,6 +38,9 @@ std::mutex mtx_tcp;
 int client_sock;
 bool quit = false;
 
+bool trackerInit = false;
+
+
 static void
 signal_handle(int signum)
 {
@@ -539,8 +542,6 @@ int Top::run(){
   // Serial_trans.detach();
   // send_serial.detach();
   // rec_serial.detach();
-  thread razer_serial_recTh(&Top::razer_serial_rec, this);
-  razer_serial_recTh.detach();
 
   std::string net = "/home/nxsd/yolo/yolov5/yolo4_berkeley_fp16.rt";
   imageProcessor nvProcessor(net);
@@ -566,7 +567,7 @@ int Top::run(){
   thermalCamTh.detach();
 
   nvrenderCfg rendercfg{1920, 1080, 960, 540, 0, 0, 0}; 
-  nvrender *renderer = new nvrender(rendercfg);
+  // nvrender *renderer = new nvrender(rendercfg);
 
   cv::Mat imgRTSP, visOri, irOri, ret;
   imgRTSP = cv::Mat(720, 1280, CV_8UC3);
@@ -574,11 +575,13 @@ int Top::run(){
 
   auto tt = cv::imread("/home/nxsd/1.jpg");
 
-  bool trackerInit = false;
-
+  
   //init serial
   serial_viscam.set_serial(0);
-  serial_razer.set_serial(1);
+  // serial_razer.set_serial(1);
+
+  // thread razer_serial_recTh(&Top::razer_serial_rec, this);
+  // razer_serial_recTh.detach();
 
   // set focal serial command
   buffSenData_cam[0] = 0x81;  
@@ -613,7 +616,9 @@ int Top::run(){
     {
       thermalCam->getFrame(irOri);
       imgRTSP.setTo(0);
+      // printf("1111,irOri:%d,%d\n", irOri.cols, irOri.rows);
       irOri.copyTo(imgRTSP(cv::Rect(320,104,640,512)));
+      // printf("2222\n");
     }
     else
     {
@@ -683,7 +688,7 @@ int Top::run(){
 
 
     RTSP->process(imgRTSP);
-    renderer->render(imgRTSP);
+    // renderer->render(imgRTSP);
     // cv::imshow("1",ret);
     // cv::waitKey(30);
 
@@ -1127,7 +1132,7 @@ int Top::razer_serial_rec(){
     }
     // std::cout <<  int(buffRcvData[0]) << " " <<  int(buffRcvData[1]) << " "  <<  int(buffRcvData[2]) << " " <<  int(buffRcvData[3]) << " " 
     //           <<  int(buffRcvData[4]) << " " <<  int(buffRcvData[5]) << " " <<  int(buffRcvData[6]) << std::endl;
-  }
+  
 }
 
 

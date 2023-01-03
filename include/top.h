@@ -76,7 +76,7 @@ public:
     int tracking();
     int data_transfer();
     int serial_transfer();
-    void razer_serial_rec();
+    int razer_serial_rec();
     void set_focal(int f);
 
     // test using function
@@ -139,8 +139,7 @@ private:
   int is_focal;
   int focal_rec;
   int focal_razer_rec;
-  int is_detec_distane;
-
+  
 
   // mode type
   // mode_frame = 1, 2, 3  vis/ir/fusion
@@ -155,5 +154,6 @@ private:
   enCtrlMode m_enCtrlMode;
 };
 
+int is_detec_distane;
 
 #endif
