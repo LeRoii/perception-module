@@ -16,7 +16,7 @@
 
 #include <dirent.h>
 
-int kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, int xMin = 0, int yMin = 0, int width = 0, int heigh = 0);
+cv::Rect kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, int xMin = 0, int yMin = 0, int width = 0, int heigh = 0);
 
 int siamtracking(SiamRPN_Tracker &tracker, cv::Mat &frame_track, bool start_tracking, float* init_rect, int* tb);
 

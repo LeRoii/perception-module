@@ -4,6 +4,7 @@
 #include <thread>
 #include <pthread.h>
 #include <sys/time.h>
+#include <cmath>
 #include "top.h"
 #include "yolov5.h"
 
@@ -40,9 +41,12 @@ std::mutex mtx_tcp;
 int client_sock;
 bool quit = false;
 
+bool tcpAcc = false;
+
 bool trackerInit = false;
 
-stServoData gServoData;
+stServoData gServoData,gServoData2;
+int yaw,pitch;
 
 static void
 signal_handle(int signum)
@@ -52,16 +56,52 @@ signal_handle(int signum)
     // close(client_sock);
 }
 
-static void genServoData(stServoData data)
+static void genServoData(int m_enCtrlMode,unsigned char* rec_param)
 {
   
   buffSenData_servo[0] = 0xEB;
   buffSenData_servo[1] = 0x90;
 
-  if(data.mode == EN_CTRL_MODE_OB || data.mode == EN_CTRL_MODE_DET)
-    buffSenData_servo[2] = 0x02;
-  else if(data.mode == EN_CTRL_MODE_AUTOTRACK || data.mode == EN_CTRL_MODE_MANUALTRACK)
+  // if(data.mode == EN_CTRL_MODE_OB || data.mode == EN_CTRL_MODE_DET)
+  //   buffSenData_servo[2] = 0x02;
+  // else if(data.mode == EN_CTRL_MODE_AUTOTRACK || data.mode == EN_CTRL_MODE_MANUALTRACK)
+  //   buffSenData_servo[2] = 0x01;
+
+  if(m_enCtrlMode==EN_CTRL_MODE_AUTOTRACK || m_enCtrlMode==EN_CTRL_MODE_MANUALTRACK){
+    //manual and auto tracking mode
     buffSenData_servo[2] = 0x01;
+    buffSenData_servo[3] = 0x00;
+    buffSenData_servo[4] = 0x00;  
+    buffSenData_servo[5] = 0x00;  
+    buffSenData_servo[6] = 0x00;  
+  }
+  else if(m_enCtrlMode==EN_CTRL_MODE_OB){
+    //location mode
+    buffSenData_servo[2] = 0x02;
+    buffSenData_servo[3] = rec_param[20];//jiao du
+    buffSenData_servo[4] = rec_param[21];  
+    buffSenData_servo[5] = rec_param[22];  
+    buffSenData_servo[6] = rec_param[23]; 
+    buffSenData_servo[7] = 0x00;
+    buffSenData_servo[8] = 0x00;
+    buffSenData_servo[9] = 0x00; 
+    buffSenData_servo[10] = 0x00;
+
+  }
+  else{
+    buffSenData_servo[2] = 0x00;
+    buffSenData_servo[3] = 0x00;
+    buffSenData_servo[4] = 0x00;  
+    buffSenData_servo[5] = 0x00;  
+    buffSenData_servo[6] = 0x00;  
+  }
+  buffSenData_servo[11] = 0x00; 
+  // printf("\n");
+  // for(int i=0;i<11;i++){
+  //   printf("%x ",buffSenData_servo[i]);
+  //   buffSenData_servo[11] += buffSenData_servo[i];
+  // }
+  // printf("\n");
 
   //To do 根据data值 填 buffSenData_servo
   
@@ -109,11 +149,17 @@ static void genRazerCamCmdData(int focal)
     buffSenData_razer[4]=0x01;
     buffSenData_razer[5]=0x04;
     }
-    if(focal == 1){
+    else if(focal == 1){
     is_detec_distane=focal;
     buffSenData_razer[2]=0x02;
-    buffSenData_razer[4]=0x04;
-    buffSenData_razer[5]=0x07;
+    buffSenData_razer[4]=0x01;
+    buffSenData_razer[5]=0x04;
+    }
+    else if(focal == 2){
+      is_detec_distane=focal;
+      buffSenData_razer[2]=0x02;
+      buffSenData_razer[4]=0x04;
+      buffSenData_razer[5]=0x07;
     }
 }
 
@@ -198,7 +244,7 @@ Top::Top(){
         close(sock);
     }
 
-    param = new unsigned char [11];
+    param = new unsigned char [15];
     param[0] = 0x55;
     param[1] = 0xAA;
     param[2] = 0x01;
@@ -210,8 +256,12 @@ Top::Top(){
     param[8] = 0x00;
     param[9] = 0x00;
     param[10] = 0x00;
+    param[11] = 0x00;
+    param[12] = 0x00;
+    param[13] = 0x00;
+    param[14] = 0x00;
 
-    rec_param = new unsigned char [18];
+    rec_param = new unsigned char [24];
     rec_param[0] = 0x00;
     rec_param[1] = 0x00;
     rec_param[2] = 0x00;
@@ -230,6 +280,12 @@ Top::Top(){
     rec_param[15] = 0x00;
     rec_param[16] = 0x00;
     rec_param[17] = 0x00;
+    rec_param[18] = 0x00;
+    rec_param[19] = 0x00;
+    rec_param[20] = 0x00;
+    rec_param[21] = 0x00;
+    rec_param[22] = 0x00;
+     rec_param[23] = 0x00;
 
 
     // serial
@@ -241,8 +297,8 @@ Top::Top(){
     buffRcvData_cam = new unsigned char [1024];
     buffSenData_razer = new unsigned char [1024];
     buffRcvData_razer = new unsigned char [1024];
-    buffSenData_servo = new unsigned char [20];
-    buffRcvData_servo = new unsigned char [20];
+    buffSenData_servo = new unsigned char [1024];
+    buffRcvData_servo = new unsigned char [1024];
 
     // mode
     // mode
@@ -251,6 +307,7 @@ Top::Top(){
 
     m_enDispMode = EN_DISPLAY_MODE_VIS;
     // m_enDispMode = EN_DISPLAY_MODE_IR;
+    // m_enDispMode = EN_DISPLAY_MODE_FUS;
     m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;//EN_CTRL_MODE_DET;//EN_CTRL_MODE_OB;
     m_enCtrlMode = EN_CTRL_MODE_OB;//EN_CTRL_MODE_DET;//EN_CTRL_MODE_OB;
     // m_enCtrlMode = EN_CTRL_MODE_DET;//EN_CTRL_MODE_DET;//EN_CTRL_MODE_OB;
@@ -274,7 +331,6 @@ Top::~Top(){
 void Top::tcp_rec()
 {
     // fcntl(client_sock, F_SETFL, O_NONBLOCK);
-    bool tcpAcc = false;
     socklen_t len = 0;
     while (!quit)
     {
@@ -284,16 +340,24 @@ void Top::tcp_rec()
         printf("tcp connected!\n");
         tcpAcc = true;
         encode_tcp_data(); 
-        int ret  =  send(client_sock, param, 11, 0);  
+        int ret  =  send(client_sock, param, 15, 0);  
       }
       else
       {
         printf("wait cmd\n");
-        int ren_len = recv(client_sock, rec_param, 18, 0);
+        int ren_len = recv(client_sock, rec_param, 24, 0);
         printf("received %d bytes\n", ren_len);
         if(ren_len > 0){
           decode_tcp_data();
         }
+        else if(ren_len == 0)
+        {
+          printf("tcp connection closed\n");
+          close(client_sock);
+          tcpAcc = false;
+        }
+        
+          
       }
     }
     
@@ -303,22 +367,43 @@ void Top::tcp_rec()
 void Top::tcp_send()
 {
     while(1)
-    {     
-      encode_tcp_data(); 
-      int ret  =  send(client_sock, param, 11, 0);  
-      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    {
+      if(tcpAcc){
+        serial_servo.serial_recieve(buffRcvData_servo);
+    //     yaw = (short(buffRcvData_servo[4]<<8)+short(buffRcvData_servo[3]))/100;
+    // pitch = (short(buffRcvData_servo[6]<<8)+short(buffRcvData_servo[5]))/100;
+    // cout<<"____"<<yaw<<"  "<<pitch<<endl;
+    
+
+        encode_tcp_data(); 
+        yaw = (short(param[12]<<8)+short(param[11]))/100;
+        pitch = (short(param[14]<<8)+short(param[13]))/100;
+        // cout<<"____"<<yaw<<"  "<<pitch<<endl;
+        cout<<"____"<<short(param[5])+short(param[4]<<8)<<"  "<<short(param[7])+short(param[6]<<8)<<endl;
+        int ret  =  send(client_sock, param, 15, 0);  
+      }   
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      
     }
 }
 
 void Top::encode_tcp_data(){
-  param[3] = uchar(detection_num[0]);
-  param[4] = uchar(tb[0] >> 8);
-  param[5] = uchar(tb[0] & 0xFF);
-  param[6] = uchar(tb[1] >> 8);
-  param[7] = uchar(tb[1] & 0xFF);
+  param[3] = uchar(object_count);
+  param[4] = uchar(gServoData2.offsetX >> 8);
+  param[5] = uchar(gServoData2.offsetX & 0xFF);
+  param[6] = uchar(gServoData2.offsetY >> 8);
+  param[7] = uchar(gServoData2.offsetY & 0xFF);
   param[8] = buffRcvData_razer[6];
   param[9] = buffRcvData_razer[7];
   param[10] = buffRcvData_razer[8];
+  // param[11] = uchar(gServoData.yaw & 0xFF);
+  // param[12] = uchar(gServoData.yaw >> 8);
+  // param[13] = uchar(gServoData.pitch & 0xFF);
+  // param[14] = uchar(gServoData.pitch >> 8);
+  param[11] = buffRcvData_servo[3];
+  param[12] = buffRcvData_servo[4];
+  param[13] = buffRcvData_servo[5];
+  param[14] = buffRcvData_servo[6];
 }
 
 void Top::decode_tcp_data(){
@@ -347,6 +432,17 @@ void Top::decode_tcp_data(){
   std::cout << focal_razer_rec << std::endl;
   genRazerCamCmdData(focal_razer_rec);
   serial_razer.serial_send(buffSenData_razer, 6);
+  for(int i=0;i<6;i++){
+    printf("%x ",buffSenData_razer[i]);
+  }
+  std::cout<<std::endl;
+  serial_razer.serial_recieve(buffRcvData_razer);
+  for(int i=0;i<10;i++){
+    printf("%x ",buffRcvData_razer[i]);
+  }
+  std::cout<<std::endl;
+
+ 
 
 
   // init rect
@@ -378,31 +474,33 @@ void Top::decode_tcp_data(){
   // // if(is_detection == 0 && is_track == 0)
   // //   mode_fun = 1;
   
+  //设置伺服模式m_enCtrlMode
   switch (ctrlMode)
   {
-    case 1:
-      m_enCtrlMode = EN_CTRL_MODE_DET;
-      //To do 设置伺服定位模式
-      // serial_servo.serial_send()
+    case 0:
+    m_enCtrlMode = EN_CTRL_MODE_FREE;
       break;
-    case 2:
+    case 1:
       m_enCtrlMode = EN_CTRL_MODE_AUTOTRACK;
       trackerInit = false;
-      //To do 设置伺服跟踪模式
-      // serial_servo.serial_send()
       break;
-    case 3:
-      m_enCtrlMode = EN_CTRL_MODE_MANUALTRACK;
-      trackerInit = false;
-      //To do 设置伺服跟踪模式
-      // serial_servo.serial_send()
-      break;
-    default:
+    case 2:
       m_enCtrlMode = EN_CTRL_MODE_OB;
-      //To do 设置伺服定位模式
-      // serial_servo.serial_send()
+      break;
+    // case 3:
+    //   m_enCtrlMode = EN_CTRL_MODE_MANUALTRACK;
+    //   trackerInit = false;
+    default:
+      m_enCtrlMode = EN_CTRL_MODE_FREE;
       break;
   }
+  //根据伺服模式构建伺服指令，向串口发送指令
+  genServoData(m_enCtrlMode,rec_param);
+  for(int i =0;i<12;i++){
+    printf("%#x ",buffSenData_servo[i]);
+  }
+  cout<<endl;
+  serial_servo.serial_send(buffSenData_servo,12);
 
   if(templateSize == 0)
   {
@@ -420,8 +518,8 @@ void Top::decode_tcp_data(){
   // // lazer
   // is_detec_distane = int(rec_param[7]);
 
-  // no_use
-  int no_use = int(rec_param[8]);
+  // object detection
+  is_detection = int(rec_param[8]);
 
   // no use 2
   int no_use_two = int(rec_param[9]);
@@ -435,7 +533,7 @@ cv::Mat Top::fusion(cv::Mat &vis, cv::Mat &ir, float gamma){
   std::string txt_path = "../homography.txt";
   std::vector<cv::Mat> homo_buffer;
   load_homo(txt_path, homo_buffer);
-  cv::Mat H = homo_buffer[focal_rec-1];
+  cv::Mat H = homo_buffer[0];
 
   cv::Mat mask = cv::Mat::ones(ir.rows, ir.cols, CV_8UC1);     //mask of fusion area
   cv::cuda::GpuMat ir_cu(ir);
@@ -443,13 +541,17 @@ cv::Mat Top::fusion(cv::Mat &vis, cv::Mat &ir, float gamma){
   transform(H, ir_cu, vis);
   transform(H, mask_cu, vis);
   mask_cu.download(mask);
+  
   cv::cuda::cvtColor(ir_cu, ir_cu, CV_BGR2GRAY);
+  
   cv::Mat y_channel;ir_cu.download(ir);                 
   cv::extractChannel(vis, y_channel, 0);
   y_channel = y_channel - gamma*y_channel.mul(mask) + gamma*ir;
   cv::insertChannel(y_channel, vis, 0);
   cv::Mat bgr(vis.rows, vis.cols, CV_8UC3);
-  cv::cvtColor(vis, bgr, cv::COLOR_YUV2BGR_YUYV);
+  // printf("111111\n");
+  cv::cvtColor(vis, bgr, cv::COLOR_YUV2RGB);
+  // printf("111111222\n");
 
   return bgr;
 }
@@ -566,6 +668,9 @@ int Top::run(){
     // close(client_sock);
     std::thread tcpTh(&Top::tcp_rec, this);
     tcpTh.detach();
+
+    std::thread send_serial(&Top::tcp_send, this);
+    send_serial.detach();
   // thread Serial_trans(&Top::serial_transfer, this);
   // std::thread send_serial(&Top::tcp_send, this);
   // std::thread rec_serial(&Top::tcp_rec, this);
@@ -580,7 +685,10 @@ int Top::run(){
   // std::string trt_engine = "/home/nxsd/yolo/code/TensorRT-SiamRPN/engine/st.engine";
   // std::string lt_engine = "/home/nxsd/yolo/code/TensorRT-SiamRPN/engine/lt.engine";
   // SiamRPN_Tracker tracker(init_engine, trt_engine, lt_engine);
+
+
   KCFTracker kcf;
+  cv::Rect track_box;
 
   visCam = new v4l2(0);
   jetsonEncoder *RTSP = new jetsonEncoder(8554);
@@ -608,7 +716,7 @@ int Top::run(){
   
   //init serial
   serial_viscam.set_serial(0);
-  // serial_razer.set_serial(1);
+  serial_razer.set_serial(1);
   serial_servo.set_serial(2);
 
   // thread razer_serial_recTh(&Top::razer_serial_rec, this);
@@ -647,7 +755,7 @@ int Top::run(){
     {
       thermalCam->getFrame(irOri);
       imgRTSP.setTo(0);
-      // printf("1111,irOri:%d,%d\n", irOri.cols, irOri.rows);
+      printf("1111,irOri:%d,%d\n", irOri.cols, irOri.rows);
       irOri.copyTo(imgRTSP(cv::Rect(320,104,640,512)));
       // printf("2222\n");
     }
@@ -656,6 +764,15 @@ int Top::run(){
       cv::Mat visImg, thermalImg;
       visCam->getFrame(visOri);
       thermalCam->getFrame(irOri);
+      cv::Mat temp;// = cv::Mat(visOri.rows,visOri.cols,CV_8UC2);
+      // cv::imwrite("vi.png", visOri);
+      // cv::imwrite("ir.png", irOri);
+      // return 0;
+      cvtColor(visOri,temp,cv::COLOR_RGB2YUV);
+
+      
+      imgRTSP = fusion(temp,irOri,0.8);
+
       //do fusion
     }
 
@@ -671,51 +788,123 @@ int Top::run(){
     //   ,init_rect[2],init_rect[3]);
     //   }
 
-    if(m_enCtrlMode == EN_CTRL_MODE_DET)
+    if(is_detection==1)
     {
-      imgRTSP = nvProcessor.ProcessOnce(imgRTSP);
+      imgRTSP = nvProcessor.ProcessOnce(imgRTSP,object_count);
     }
-    else if(m_enCtrlMode == EN_CTRL_MODE_AUTOTRACK)
+    if(m_enCtrlMode == EN_CTRL_MODE_AUTOTRACK)
     {
       auto start = std::chrono::system_clock::now();
       if(trackerInit == false){
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+        track_box = kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
         trackerInit = true;
       }
       else{
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+        track_box = kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
       }
+      // std::cout<<"track_box"<<track_box.x<<track_box.width<<std::endl;
 
       //To do 计算脱靶量
 
-      //To do 向伺服发命令
+      gServoData.offsetX = (track_box.x+track_box.width/2)-640;
+      gServoData.offsetY = (track_box.y+track_box.height/2)-360;
+      // gServoData.offsetX = 1;
+      // gServoData.offsetY = 1;
+      gServoData2.offsetX = gServoData.offsetX;
+      gServoData2.offsetY = gServoData.offsetY;
+      //std::cout<<"raw gServoData_________"<<gServoData.offsetX<<gServoData.offsetY<<std::endl;
+      gServoData.offsetX =  atan(gServoData.offsetX*0.003f/4.3)*1000;
+      gServoData.offsetY =  atan(gServoData.offsetY*0.003f/4.3)*1000;
 
-      printf("init rect:%f,%f,%f,%f\n",init_rect[0],init_rect[1]
-      ,init_rect[2],init_rect[3]);
+      //std::cout<<"gServoData"<<gServoData.offsetX<<gServoData.offsetY<<std::endl;                                                          
+      // buffSenData_servo[7]=gServoData.offsetX&0xff;
+      // buffSenData_servo[8]=gServoData.offsetX>>8;
+      // buffSenData_servo[9]=gServoData.offsetY&0xff;
+      // buffSenData_servo[10]=gServoData.offsetY>>8;
+      buffSenData_servo[7]=0x00;
+      buffSenData_servo[8]=0x00;
+      buffSenData_servo[9]=0x00;
+      buffSenData_servo[10]=0x00;
+      buffSenData_servo[11] = 0x00;
+      
+      // printf("\n");
+      // for(int i=0;i<11;i++){
+      //   printf("%x ",buffSenData_servo[i]);
+      //   buffSenData_servo[11] += buffSenData_servo[i];
+      // }
+      // printf("\n");
+      //To do 向伺服发命令
+      serial_servo.serial_send(buffSenData_servo,12);
+      
+
+      // printf("init rect:%f,%f,%f,%f\n",init_rect[0],init_rect[1],init_rect[2],init_rect[3]);
 
       auto end = std::chrono::system_clock::now();
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-              << "ms" << std::endl;
+    // std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+    //           << "ms" << std::endl;
     }
     else if(m_enCtrlMode == EN_CTRL_MODE_MANUALTRACK)
     {
       if(trackerInit == false){
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+        track_box = kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
         trackerInit = true;
       }
       else{
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
-        kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
+        track_box = kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
       }
+      //To do 计算脱靶量
+      gServoData.offsetX = (track_box.x+track_box.width/2)-imgRTSP.rows/2;
+      gServoData.offsetY = (track_box.y+track_box.height/2)-imgRTSP.cols/2; 
+      gServoData.offsetX =  gServoData.offsetX*0.003f/4.3*1000;
+      gServoData.offsetY =  gServoData.offsetY*0.003f/4.3*1000;                                                                      
+      buffSenData_servo[7]=gServoData.offsetX&0xff;
+      buffSenData_servo[8]=gServoData.offsetX>>8;
+      buffSenData_servo[9]=gServoData.offsetY&0xff;
+      buffSenData_servo[10]=gServoData.offsetY>>8;
+      buffSenData_servo[11] = 0x00; 
+      printf("\n");
+      for(int i=0;i<11;i++){
+        printf("%x ",buffSenData_servo[i]);
+        buffSenData_servo[11] += buffSenData_servo[i];
+      }
+      printf("\n");
+      //To do 向伺服发命令
+      //serial_servo.serial_send(buffSenData_servo,12);
 
     }
+
+    
+    
+    // printf("yaw:[%#x,%#x]\n", buffRcvData_servo[4], buffRcvData_servo[3]);
+    // short s16yaw = 
+    //cout<<"_____________________"<<short(buffRcvData_servo[4]<<8)+short(buffRcvData_servo[3])<<"  "<<short(buffRcvData_servo[6]<<8)+short(buffRcvData_servo[5])<<endl;
+    // yaw = (short(buffRcvData_servo[4]<<8)+short(buffRcvData_servo[3]))/100;
+    // pitch = (short(buffRcvData_servo[6]<<8)+short(buffRcvData_servo[5]))/100;
+    // cout<<"_____________________"<<yaw<<"  "<<pitch<<endl;
+    
+    // if(yaw<=170 && yaw>=-170 && pitch>=0 && pitch<=60){
+      
+    //   gServoData.yaw = yaw;
+    //   gServoData.pitch = pitch;
+    // } 
+    
+    // if(tcpAcc){
+    //     encode_tcp_data(); 
+    //     send(client_sock, param, 15, 0);
+    //     }
+    //  printf("Rev:");
+    // for(int i=0;i<7;i++){
+    //   printf("%x ",buffRcvData_servo[i]);
+    // }
+    // printf("\n");
 
     //draw cross, move to render
     // cv::line(img, cv::Point(600, 360), cv::Point(680, 360), cv::Scalar(0,255,255), 3);
@@ -723,6 +912,8 @@ int Top::run(){
 
 
     RTSP->process(imgRTSP);
+
+
     // renderer->render(imgRTSP);
     // cv::imshow("1",ret);
     // cv::waitKey(30);
@@ -733,6 +924,8 @@ printf("after while\n");
 
 pthread_cancel(visCamThId);
 pthread_cancel(thermalCamThId);
+
+
 // delete visCam;
   // socklen_t len = 0;
   // std::cout << "------------------------------------------------" << std::endl;
@@ -797,7 +990,7 @@ void Top::thermelRun(){
   //   cap.read(frame);
 	// 	buffer_thermel.push_back(frame);
 	// 	if(buffer_thermel.size() > 10){
-	// 		buffer_thermel.erase(buffer_thermel.begin(), buffer_thermel.end()-10);
+	// 		buffer_thermel.erase(buffer_thermel.buffer_visibegin(), buffer_thermel.end()-10);
 	// 	}
 	// }
 }
@@ -1169,6 +1362,8 @@ int Top::razer_serial_rec(){
     //           <<  int(buffRcvData[4]) << " " <<  int(buffRcvData[5]) << " " <<  int(buffRcvData[6]) << std::endl;
   
 }
+
+
 
 
 

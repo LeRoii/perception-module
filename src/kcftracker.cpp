@@ -209,7 +209,7 @@ cv::Rect KCFTracker::update(cv::Mat image)
         }
     }
 
-    std::cout << peak_value << std::endl;
+    //std::cout << peak_value << std::endl;
 
     // Adjust by cell size and _scale
     _roi.x = cx - _roi.width / 2.0f + ((float) res.x * cell_size * _scale);

@@ -41,19 +41,19 @@ enum enDispalyMode
 
 enum enCtrlMode
 {
-  EN_CTRL_MODE_OB = 1,
-  EN_CTRL_MODE_DET = 2,
-  EN_CTRL_MODE_AUTOTRACK = 3,
-  EN_CTRL_MODE_MANUALTRACK = 4
+  EN_CTRL_MODE_FREE = 0,
+  EN_CTRL_MODE_AUTOTRACK = 1,
+  EN_CTRL_MODE_OB = 2,
+  EN_CTRL_MODE_MANUALTRACK = 3
 };
 
 struct stServoData
 {
-  enCtrlMode mode,
-  float yaw,  //航向角
-  float pitch,  //俯仰角
-  int offsetX,  //脱靶量x
-  int offsetY //脱靶量y
+  enCtrlMode mode;
+  int yaw;
+  int pitch;
+  short offsetX;
+  short offsetY;
 };
 
 const float AUTO_TRACK_SIZE_L = 128;
@@ -127,6 +127,10 @@ private:
   // tracking
   int start_tracking;
   int is_initialised;
+
+  //detection
+  int is_detection;
+  int object_count;
   
   std::vector<cv::Rect> bbox_id;
   int track_id;

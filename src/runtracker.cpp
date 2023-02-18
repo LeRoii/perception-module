@@ -2,7 +2,7 @@
 
 
 
-int kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, int xMin, int yMin, int width, int height){
+cv::Rect kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, int xMin, int yMin, int width, int height){
 
 	bool SILENT = false;
 
@@ -19,7 +19,7 @@ int kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, 
 	// Update
 	else{
 		result = tracker.update(frame_track);
-        std::cout << result.x << " " << result.y << " " << result.width << " " << result.height << std::endl;
+        //std::cout << result.x << " " << result.y << " " << result.width << " " << result.height << std::endl;
 		cv::rectangle( frame_track, cv::Point( result.x, result.y ), cv::Point( result.x+result.width, result.y+result.height), cv::Scalar( 0, 255, 255 ), 1, 8 );
 	}
 
@@ -29,7 +29,7 @@ int kcftracking(KCFTracker &tracker, cv::Mat &frame_track, bool start_tracking, 
 	// 	cv::imshow("Tracking", frame);
 	// }
 
-	return 1;
+	return result;
 }
 
 int siamtracking(SiamRPN_Tracker &tracker, cv::Mat &frame_track, bool start_tracking, float* init_rect, int* tb){
@@ -59,7 +59,7 @@ int siamtracking(SiamRPN_Tracker &tracker, cv::Mat &frame_track, bool start_trac
 		if(tb[1] > 1080)
 			tb[1] = 0;
 		delete[] rect_ori;
-		std::cout << (r.x + r.width) << " " << (init_rect[0] + init_rect[2]) << std::endl;
+		//std::cout << (r.x + r.width) << " " << (init_rect[0] + init_rect[2]) << std::endl;
 	}
 
 	return 1;

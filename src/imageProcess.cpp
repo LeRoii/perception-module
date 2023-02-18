@@ -165,6 +165,27 @@ cv::Mat imageProcessor::ProcessOnce(cv::Mat &img, std::vector<int> &detr){
     return ret;
 }
 
+cv::Mat imageProcessor::ProcessOnce(cv::Mat &img,int & obj_count){
+    std::vector<cv::Mat>  ceil_img;
+    cv::Mat  yolo_result;
+
+    std::vector<int> detr;
+    char center_str[10]={0};
+    cv::Mat ret = ImageDetect(img, detr);
+
+
+    if(detr.size()>=6){
+        cv::Point p = cv::Point(detr[0]+detr[2]/2,detr[1]+detr[3]/2);
+        sprintf(center_str,"%d, %d", angle_x/10, angle_y/10);
+        cv::putText(ret, center_str, p, cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(0,255, 0), 1, CV_AA);
+    }
+
+    // yolo_result = processImage(ceil_img);
+    // publishImage(yolo_result);
+    obj_count = detr.size()/6;
+    return ret;
+}
+
 cv::Mat imageProcessor::ProcessOnce(cv::Mat &img){
     std::vector<cv::Mat>  ceil_img;
     cv::Mat  yolo_result;

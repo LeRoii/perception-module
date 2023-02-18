@@ -21,6 +21,27 @@ using namespace std;
 // }
 
 int main(int argc, char *argv[]){
+
+    // std::vector<cv::Point2f> ptSrc,ptDst;
+    // ptSrc.push_back(cv::Point2f(426,411));
+    // ptSrc.push_back(cv::Point2f(469,19));
+    // ptSrc.push_back(cv::Point2f(558,14));
+    // ptSrc.push_back(cv::Point2f(340,347));
+    // ptSrc.push_back(cv::Point2f(339,294));
+    // ptSrc.push_back(cv::Point2f(71,137));
+
+    // ptDst.push_back(cv::Point2f(745,504));
+    // ptDst.push_back(cv::Point2f(788,96));
+    // ptDst.push_back(cv::Point2f(880,91));
+    // ptDst.push_back(cv::Point2f(655,440));
+    // ptDst.push_back(cv::Point2f(653,383));
+    // ptDst.push_back(cv::Point2f(371,225));
+
+    // cv::Mat h = cv::findHomography(ptSrc,ptDst);
+
+    // std::cout<<h<<std::endl;
+    // return 0;
+
     int opt = 0;
     bool open_vis = 0; bool open_ir = 0; bool open_fusion = 0; bool get_capture = 0;; bool kcf = 0;
 

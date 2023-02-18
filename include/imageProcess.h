@@ -31,6 +31,7 @@ class imageProcessor
     public:
     imageProcessor(std::string net, std::string canname = "can0", int batchsize = 1);
     cv::Mat ProcessOnce(cv::Mat &img, std::vector<int> &ret);
+    cv::Mat ProcessOnce(cv::Mat &img,int&);
     cv::Mat ProcessOnce(cv::Mat &img);
     cv::Mat SSR(cv::Mat input);     //图像增强
     cv::Mat ImageDetect(cv::Mat &img, std::vector<int> &detret);     //目标检测
