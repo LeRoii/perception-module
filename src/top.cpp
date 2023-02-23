@@ -19,15 +19,17 @@
 #include <X11/Xlib.h>
 
 
-std::mutex mtx_push_visbuffer;
-std::mutex mtx_pop_visbuffer;
+// std::mutex mtx_push_visbuffer;
+// std::mutex mtx_pop_visbuffer;
 
-std::mutex mtx_push_showbuffer;
-std::mutex mtx_pop_showbuffer;
+// std::mutex mtx_push_showbuffer;
+// std::mutex mtx_pop_showbuffer;
 
-std::mutex mtx_clear_showbuffer;
+// std::mutex mtx_clear_showbuffer;
 
-std::mutex mtx_tcp;
+// std::mutex mtx_tcp;
+std::mutex mtx_track_buffSenData;
+
 
   unsigned char* buffSenData_cam;
   unsigned char* buffRcvData_cam;
@@ -69,11 +71,19 @@ static void genServoData(int m_enCtrlMode,unsigned char* rec_param)
 
   if(m_enCtrlMode==EN_CTRL_MODE_AUTOTRACK || m_enCtrlMode==EN_CTRL_MODE_MANUALTRACK){
     //manual and auto tracking mode
+    mtx_track_buffSenData.lock();
     buffSenData_servo[2] = 0x01;
     buffSenData_servo[3] = 0x00;
     buffSenData_servo[4] = 0x00;  
     buffSenData_servo[5] = 0x00;  
-    buffSenData_servo[6] = 0x00;  
+    buffSenData_servo[6] = 0x00;
+    buffSenData_servo[7] = 0x00;
+    buffSenData_servo[8] = 0x00;
+    buffSenData_servo[9] = 0x00;  
+    buffSenData_servo[10] = 0x00;  
+    mtx_track_buffSenData.unlock();
+
+
   }
   else if(m_enCtrlMode==EN_CTRL_MODE_OB){
     //location mode
@@ -379,7 +389,7 @@ void Top::tcp_send()
         yaw = (short(param[12]<<8)+short(param[11]))/100;
         pitch = (short(param[14]<<8)+short(param[13]))/100;
         // cout<<"____"<<yaw<<"  "<<pitch<<endl;
-        cout<<"____"<<short(param[5])+short(param[4]<<8)<<"  "<<short(param[7])+short(param[6]<<8)<<endl;
+        //cout<<"____"<<short(param[5])+short(param[4]<<8)<<"  "<<short(param[7])+short(param[6]<<8)<<endl;
         int ret  =  send(client_sock, param, 15, 0);  
       }   
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -441,10 +451,6 @@ void Top::decode_tcp_data(){
     printf("%x ",buffRcvData_razer[i]);
   }
   std::cout<<std::endl;
-
- 
-
-
   // init rect
   init_rect[0] = int(rec_param[10] << 8) + int(rec_param[11]);
   init_rect[1] = int(rec_param[12] << 8) + int(rec_param[13]);
@@ -805,31 +811,39 @@ int Top::run(){
         // siamtracking(tracker, img, trackerInit, init_rect, tb);
         track_box = kcftracking(kcf, imgRTSP, trackerInit, init_rect[0],init_rect[1]
       ,init_rect[2],init_rect[3]);
-      }
-      // std::cout<<"track_box"<<track_box.x<<track_box.width<<std::endl;
 
-      //To do 计算脱靶量
+       //To do 计算脱靶量
 
       gServoData.offsetX = (track_box.x+track_box.width/2)-640;
       gServoData.offsetY = (track_box.y+track_box.height/2)-360;
-      // gServoData.offsetX = 1;
-      // gServoData.offsetY = 1;
+      // gServoData.offsetX = 0;
+      // gServoData.offsetY = 0;
       gServoData2.offsetX = gServoData.offsetX;
       gServoData2.offsetY = gServoData.offsetY;
+      cout<<gServoData.offsetX<<gServoData.offsetY<<endl;
       //std::cout<<"raw gServoData_________"<<gServoData.offsetX<<gServoData.offsetY<<std::endl;
       gServoData.offsetX =  atan(gServoData.offsetX*0.003f/4.3)*1000;
       gServoData.offsetY =  atan(gServoData.offsetY*0.003f/4.3)*1000;
 
-      //std::cout<<"gServoData"<<gServoData.offsetX<<gServoData.offsetY<<std::endl;                                                          
-      // buffSenData_servo[7]=gServoData.offsetX&0xff;
-      // buffSenData_servo[8]=gServoData.offsetX>>8;
-      // buffSenData_servo[9]=gServoData.offsetY&0xff;
-      // buffSenData_servo[10]=gServoData.offsetY>>8;
-      buffSenData_servo[7]=0x00;
-      buffSenData_servo[8]=0x00;
-      buffSenData_servo[9]=0x00;
-      buffSenData_servo[10]=0x00;
-      buffSenData_servo[11] = 0x00;
+      //std::cout<<"gServoData"<<gServoData.offsetX<<gServoData.offsetY<<std::endl;
+      if(mtx_track_buffSenData.try_lock()){
+        buffSenData_servo[7]=gServoData.offsetX&0xff;
+        buffSenData_servo[8]=gServoData.offsetX>>8;
+        buffSenData_servo[9]=gServoData.offsetY&0xff;
+        buffSenData_servo[10]=gServoData.offsetY>>8;
+        // buffSenData_servo[7]=0x00;
+        // buffSenData_servo[8]=0x00;
+        // buffSenData_servo[9]=0x00;
+        // buffSenData_servo[10]=0x00;
+        buffSenData_servo[11] = 0x00;
+        mtx_track_buffSenData.unlock();
+      }    
+      }
+      // std::cout<<"track_box"<<track_box.x<<track_box.width<<std::endl;
+     
+
+                                                         
+      
       
       // printf("\n");
       // for(int i=0;i<11;i++){
